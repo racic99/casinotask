@@ -13,7 +13,7 @@ series of focused commits:
 | `ebaaad7` | DB migration (Bayesian columns/triggers, IP gate, email-verification RLS, indexes) + app-layer security & auth hardening |
 | `bebbdbf` | SEO layer (metadata, JSON-LD, sitemap/robots, Bayesian ranking, pagination) |
 | `28d7613` | Caching/revalidation, accessibility, security headers, env validation |
-| _(this change)_ | Unit + integration tests, CI workflow, Lighthouse measurement & perf fixes |
+| `d668970` | Unit + integration tests, CI workflow, Lighthouse measurement & perf fixes |
 
 > **Stack:** Next.js 16.2.6 (App Router, `proxy.ts` — *not* `middleware.ts`), React 19,
 > Supabase (`@supabase/ssr`), Zod 4, Tailwind 4, Vitest 3.
