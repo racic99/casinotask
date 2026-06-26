@@ -4,9 +4,28 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+// Accepts a bare hostname or a full URL, normalizes to the lowercase hostname
+// (strips scheme, path, and any leading "www."), and validates it looks like a
+// real domain. Rejects junk so we never render an abusive/broken outbound link.
+const domainSchema = z
+  .string()
+  .trim()
+  .transform((value) =>
+    value
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/.*$/, "")
+      .replace(/^www\./i, "")
+      .toLowerCase()
+  )
+  .refine(
+    (host) =>
+      /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(host),
+    { error: "Enter a valid domain, e.g. acme.com" }
+  );
+
 const companySchema = z.object({
   name: z.string().min(2, { error: "Company name must be at least 2 characters." }).max(100).trim(),
-  domain: z.string().trim().optional(),
+  domain: domainSchema.optional(),
   description: z.string().max(500).trim().optional(),
   category: z.string().trim().optional(),
 });

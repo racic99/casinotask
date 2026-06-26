@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { postReview } from "@/app/actions/reviews";
+import { useActionState, useState, useTransition } from "react";
+import { postReview, resendVerification } from "@/app/actions/reviews";
 
 type Props = {
   companyId: string;
@@ -12,6 +12,8 @@ export default function ReviewForm({ companyId, companySlug }: Props) {
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [state, formAction, isPending] = useActionState(postReview, undefined);
+  const [isResending, startResend] = useTransition();
+  const [resendMessage, setResendMessage] = useState<{ error?: string; success?: boolean }>();
 
   return (
     <form action={formAction} className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
@@ -87,7 +89,28 @@ export default function ReviewForm({ companyId, companySlug }: Props) {
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
+        <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          <p>{state.error}</p>
+          {state.needsVerification && (
+            <button
+              type="button"
+              onClick={() => startResend(async () => setResendMessage(await resendVerification()))}
+              disabled={isResending}
+              className="mt-1 font-medium underline hover:no-underline disabled:opacity-50"
+            >
+              {isResending ? "Sending…" : "Resend verification email"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {resendMessage?.success && (
+        <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+          Verification email sent — check your inbox.
+        </p>
+      )}
+      {resendMessage?.error && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{resendMessage.error}</p>
       )}
 
       <button

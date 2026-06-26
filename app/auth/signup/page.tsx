@@ -7,6 +7,28 @@ import { signUp } from "@/app/actions/auth";
 export default function SignupPage() {
   const [state, formAction, isPending] = useActionState(signUp, undefined);
 
+  if (state?.emailConfirmation) {
+    return (
+      <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="bg-white rounded-xl border border-gray-100 p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Check your inbox</h1>
+            <p className="text-sm text-gray-500">
+              We&apos;ve sent you a confirmation link. Click it to verify your email and
+              finish creating your account.
+            </p>
+            <p className="mt-4 text-sm text-gray-500">
+              Already verified?{" "}
+              <Link href="/auth/login" className="text-green-600 hover:underline font-medium">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -62,7 +84,7 @@ export default function SignupPage() {
                 type="password"
                 required
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.password && (

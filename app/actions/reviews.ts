@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getClientIpHash } from "@/lib/ip";
 
 const reviewSchema = z.object({
   companyId: z.string().uuid({ error: "Invalid company." }),
@@ -12,13 +13,24 @@ const reviewSchema = z.object({
   body: z.string().min(10, { error: "Review must be at least 10 characters." }).max(2000).trim(),
 });
 
-type ActionState = { error?: string; fieldErrors?: Record<string, string[]> } | undefined;
+type ActionState =
+  | { error?: string; fieldErrors?: Record<string, string[]>; needsVerification?: boolean }
+  | undefined;
 
 export async function postReview(prevState: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { error: "You must be signed in to write a review." };
+
+  // Email-verification gate (defense-in-depth; the DB RLS policy enforces this
+  // too, but checking here lets us return a friendly, actionable message).
+  if (!user.email_confirmed_at) {
+    return {
+      error: "Please verify your email before posting a review.",
+      needsVerification: true,
+    };
+  }
 
   const parsed = reviewSchema.safeParse({
     companyId: formData.get("companyId"),
@@ -32,19 +44,46 @@ export async function postReview(prevState: ActionState, formData: FormData): Pr
     return { fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
   }
 
+  // Salted hash of the client IP (never the raw IP). Null when no salt is
+  // configured or the IP can't be resolved — the per-IP limit simply doesn't
+  // apply in that case (the DB index excludes null ip_hash).
+  const ipHash = await getClientIpHash();
+
   const { error } = await supabase.from("reviews").insert({
     company_id: parsed.data.companyId,
     user_id: user.id,
     rating: parsed.data.rating,
     title: parsed.data.title,
     body: parsed.data.body,
+    ip_hash: ipHash,
   });
 
   if (error) {
-    if (error.code === "23505") return { error: "You have already reviewed this company." };
+    if (error.code === "23505") {
+      // Two unique constraints can trip here: one review per user per company,
+      // and one review per IP per company. Distinguish by the constraint name
+      // so the message is accurate.
+      if (error.message.includes("reviews_company_ip_unique")) {
+        return { error: "A review for this company has already been submitted from your network." };
+      }
+      return { error: "You have already reviewed this company." };
+    }
     return { error: error.message };
   }
 
   revalidatePath(`/companies/${parsed.data.companySlug}`);
   return undefined;
 }
+
+export async function resendVerification(): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user?.email) return { error: "You must be signed in." };
+  if (user.email_confirmed_at) return { success: true };
+
+  const { error } = await supabase.auth.resend({ type: "signup", email: user.email });
+  if (error) return { error: error.message };
+  return { success: true };
+}
+

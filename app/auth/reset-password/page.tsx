@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
                 type="password"
                 required
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.password && (
