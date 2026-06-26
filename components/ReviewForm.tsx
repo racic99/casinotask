@@ -53,7 +53,7 @@ export default function ReviewForm({ companyId, companySlug }: Props) {
 
   return (
     <form action={formAction} className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-      <h3 className="font-semibold text-gray-900">Write a review</h3>
+      <h2 className="font-semibold text-gray-900">Write a review</h2>
 
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="companySlug" value={companySlug} />
@@ -182,7 +182,7 @@ export default function ReviewForm({ companyId, companySlug }: Props) {
       <button
         type="submit"
         disabled={isPending || rating === 0}
-        className="w-full py-2 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-2 px-4 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? "Submitting…" : "Submit review"}
       </button>

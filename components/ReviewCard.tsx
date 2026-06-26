@@ -13,7 +13,7 @@ export default function ReviewCard({ review }: { review: Review }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <StarRating rating={review.rating} size="sm" />
-          <h4 className="mt-2 font-semibold text-gray-900">{review.title}</h4>
+          <h3 className="mt-2 font-semibold text-gray-900">{review.title}</h3>
         </div>
         <time dateTime={review.created_at} className="text-sm text-gray-500 shrink-0">
           {date}

@@ -3,10 +3,14 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { getSiteUrl, SITE_NAME, SITE_DESCRIPTION } from "@/lib/seo";
+import { env } from "@/lib/env";
 
-const geist = Geist({ subsets: ["latin"] });
+// display: "swap" renders text immediately in a metric-compatible fallback,
+// then swaps to Geist — avoids invisible text (LCP delay) and minimizes CLS.
+const geist = Geist({ subsets: ["latin"], display: "swap" });
 
 const siteUrl = getSiteUrl();
+const supabaseOrigin = new URL(env.NEXT_PUBLIC_SUPABASE_URL).origin;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -34,6 +38,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.className} h-full`}>
+      <head>
+        {/* Warm up the Supabase connection so client-side auth/data calls don't
+            pay TLS + DNS on first use. */}
+        <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={supabaseOrigin} />
+      </head>
       <body className="min-h-full flex flex-col bg-gray-50">
         <a
           href="#main-content"

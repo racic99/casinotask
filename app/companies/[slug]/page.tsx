@@ -163,7 +163,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                     href={`https://${company.domain}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-green-600 hover:underline"
+                    className="text-sm text-green-700 hover:underline"
                   >
                     {company.domain}
                   </a>
@@ -188,7 +188,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </span>
           <div>
             <StarRating rating={avgRating} size="md" />
-            <p className="text-sm text-gray-400 mt-0.5">
+            <p className="text-sm text-gray-500 mt-0.5">
               {reviewCount === 0
                 ? "No reviews yet"
                 : `${reviewCount} review${reviewCount !== 1 ? "s" : ""}`}
@@ -213,7 +213,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               <p className="text-sm text-gray-500 mb-3">Sign in to write a review</p>
               <Link
                 href={`/auth/login?next=/companies/${company.slug}`}
-                className="inline-block px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-full hover:bg-green-700"
+                className="inline-block px-4 py-2 text-sm font-medium text-white bg-green-700 rounded-full hover:bg-green-800"
               >
                 Sign in
               </Link>
@@ -223,8 +223,9 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
         {/* Reviews list */}
         <div className="lg:col-span-2 space-y-3">
+          <h2 className="sr-only">Reviews</h2>
           {reviews.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
+            <div className="text-center py-12 text-gray-500 text-sm">
               No reviews yet — be the first!
             </div>
           ) : (

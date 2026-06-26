@@ -19,7 +19,7 @@ export default function SignupPage() {
             </p>
             <p className="mt-4 text-sm text-gray-500">
               Already verified?{" "}
-              <Link href="/auth/login" className="text-green-600 hover:underline font-medium">
+              <Link href="/auth/login" className="text-green-700 hover:underline font-medium">
                 Sign in
               </Link>
             </p>
@@ -101,14 +101,14 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full py-2.5 px-4 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-2.5 px-4 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isPending ? "Creating account…" : "Create account"}
             </button>
 
             <p className="text-center text-sm text-gray-600">
               Already have an account?{" "}
-              <Link href="/auth/login" className="text-green-600 hover:underline font-medium">
+              <Link href="/auth/login" className="text-green-700 hover:underline font-medium">
                 Sign in
               </Link>
             </p>
