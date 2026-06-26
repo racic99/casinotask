@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
 import type { CompanyCardItem } from "@/types/database";
+import { JsonLd, webSiteSearch, breadcrumbList } from "@/lib/jsonld";
 
 const COMPANY_SELECT =
   "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
@@ -9,10 +10,11 @@ const COMPANY_SELECT =
 export default async function Home() {
   const supabase = await createClient();
 
+  // Rank by the Bayesian score (review credibility), not the raw average.
   const { data: rows } = await supabase
     .from("companies")
     .select(COMPANY_SELECT)
-    .order("created_at", { ascending: false })
+    .order("bayesian_rating", { ascending: false })
     .limit(6);
 
   const companies: CompanyCardItem[] = (rows ?? []).map((row) => ({
@@ -28,6 +30,12 @@ export default async function Home() {
 
   return (
     <div>
+      <JsonLd
+        schema={[
+          webSiteSearch(),
+          breadcrumbList([{ name: "Home", path: "/" }]),
+        ]}
+      />
       {/* Hero */}
       <section className="bg-white border-b border-gray-100 py-16 px-4">
         <div className="max-w-2xl mx-auto text-center">

@@ -1,24 +1,65 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
 import type { CompanyCardItem } from "@/types/database";
+import { JsonLd, breadcrumbList } from "@/lib/jsonld";
 
 const COMPANY_SELECT =
   "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
 
-type Props = { searchParams: Promise<{ q?: string }> };
+const PAGE_SIZE = 24;
+
+type Props = { searchParams: Promise<{ q?: string; page?: string }> };
+
+function parsePage(value: string | undefined): number {
+  const n = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { q, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+
+  if (q) {
+    // Bare search-query URLs are thin/duplicate; keep them out of the index.
+    return {
+      title: `Search: ${q}`,
+      description: `Companies matching "${q}".`,
+      robots: { index: false, follow: true },
+      alternates: { canonical: "/companies" },
+    };
+  }
+
+  // Self-referencing canonical per page so paginated views aren't deduped.
+  const canonical = page > 1 ? `/companies?page=${page}` : "/companies";
+
+  return {
+    title: page > 1 ? `All companies — Page ${page}` : "All companies",
+    description: "Browse and compare companies ranked by verified review scores.",
+    alternates: { canonical },
+  };
+}
 
 export default async function CompaniesPage({ searchParams }: Props) {
-  const { q } = await searchParams;
+  const { q, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
   const supabase = await createClient();
 
-  let query = supabase.from("companies").select(COMPANY_SELECT).order("name");
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // Rank by Bayesian score; display the raw average + count on each card.
+  let query = supabase
+    .from("companies")
+    .select(COMPANY_SELECT, { count: "exact" })
+    .order("bayesian_rating", { ascending: false });
 
   if (q) {
     query = query.ilike("name", `%${q}%`);
   }
 
-  const { data: rows } = await query.limit(50);
+  const { data: rows, count } = await query.range(from, to);
 
   const companiesWithRatings: CompanyCardItem[] = (rows ?? []).map((row) => ({
     id: row.id,
@@ -31,8 +72,27 @@ export default async function CompaniesPage({ searchParams }: Props) {
     review_count: row.company_ratings?.[0]?.review_count ?? 0,
   }));
 
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  const buildHref = (target: number) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (target > 1) params.set("page", String(target));
+    const qs = params.toString();
+    return qs ? `/companies?${qs}` : "/companies";
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
+      <JsonLd
+        schema={breadcrumbList([
+          { name: "Home", path: "/" },
+          { name: "Companies", path: "/companies" },
+        ])}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
           {q ? `Results for "${q}"` : "All companies"}
@@ -91,6 +151,39 @@ export default async function CompaniesPage({ searchParams }: Props) {
             <CompanyCard key={company.id} company={company} />
           ))}
         </div>
+      )}
+
+      {(hasPrev || hasNext) && (
+        <nav
+          className="mt-10 flex items-center justify-between"
+          aria-label="Pagination"
+        >
+          {hasPrev ? (
+            <Link
+              href={buildHref(page - 1)}
+              rel="prev"
+              className="px-4 py-2 text-sm font-medium text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50"
+            >
+              ← Previous
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-sm text-gray-500">
+            Page {page} of {totalPages}
+          </span>
+          {hasNext ? (
+            <Link
+              href={buildHref(page + 1)}
+              rel="next"
+              className="px-4 py-2 text-sm font-medium text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50"
+            >
+              Next →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
       )}
     </div>
   );

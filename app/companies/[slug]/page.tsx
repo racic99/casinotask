@@ -1,36 +1,112 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
+import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import StarRating from "@/components/StarRating";
 import ReviewCard from "@/components/ReviewCard";
 import ReviewForm from "@/components/ReviewForm";
 import Link from "next/link";
 import type { Review } from "@/types/database";
+import { JsonLd, organizationSchema, breadcrumbList } from "@/lib/jsonld";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
+};
 
-export default async function CompanyPage({ params }: Props) {
+const REVIEWS_PER_PAGE = 20;
+// Number of reviews embedded into the Organization JSON-LD as a sample.
+const JSONLD_REVIEW_SAMPLE = 5;
+
+function parsePage(value: string | undefined): number {
+  const n = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+// Deduped per request so generateMetadata and the page share one query.
+const getCompany = cache(async (slug: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("companies")
+    .select(
+      "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)"
+    )
+    .eq("slug", slug)
+    .single();
+  return data;
+});
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const company = await getCompany(slug);
+
+  if (!company) {
+    return { title: "Company not found", robots: { index: false, follow: false } };
+  }
+
+  const rating = company.company_ratings?.[0];
+  const avgRating = rating?.avg_rating ?? 0;
+  const reviewCount = rating?.review_count ?? 0;
+
+  const ratingFragment =
+    reviewCount > 0
+      ? `Rated ${avgRating.toFixed(1)}/5 from ${reviewCount} review${reviewCount !== 1 ? "s" : ""}. `
+      : "";
+  const description =
+    company.description?.trim() ||
+    `${ratingFragment}Read verified reviews of ${company.name}.`;
+
+  // Self-referencing canonical per page so paginated review views aren't deduped.
+  const canonical =
+    page > 1
+      ? `/companies/${company.slug}?page=${page}`
+      : `/companies/${company.slug}`;
+
+  return {
+    title: page > 1 ? `${company.name} reviews — Page ${page}` : `${company.name} reviews`,
+    description: description.slice(0, 160),
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      title: `${company.name} reviews`,
+      description: description.slice(0, 200),
+      url: canonical,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${company.name} reviews`,
+      description: description.slice(0, 200),
+    },
+  };
+}
+
+export default async function CompanyPage({ params, searchParams }: Props) {
+  const { slug } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
   const supabase = await createClient();
 
-  const [{ data: company }, { data: { user } }] = await Promise.all([
-    supabase
-      .from("companies")
-      .select(
-        "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)"
-      )
-      .eq("slug", slug)
-      .single(),
+  const [company, { data: { user } }] = await Promise.all([
+    getCompany(slug),
     supabase.auth.getUser(),
   ]);
 
   if (!company) notFound();
 
-  const { data: reviewRows } = await supabase
+  const from = (page - 1) * REVIEWS_PER_PAGE;
+  const to = from + REVIEWS_PER_PAGE - 1;
+
+  const { data: reviewRows, count: reviewTotal } = await supabase
     .from("reviews")
-    .select("id, company_id, user_id, rating, title, body, created_at, profiles (display_name)")
+    .select(
+      "id, company_id, user_id, rating, title, body, created_at, profiles (display_name)",
+      { count: "exact" }
+    )
     .eq("company_id", company.id)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   // The to-one `profiles` embed is a single object at runtime; the untyped
   // client widens it to an array, so normalize to the Review shape here.
@@ -39,6 +115,15 @@ export default async function CompanyPage({ params }: Props) {
   const rating = company.company_ratings?.[0];
   const avgRating = rating?.avg_rating ?? 0;
   const reviewCount = rating?.review_count ?? 0;
+
+  const totalPages = Math.max(1, Math.ceil((reviewTotal ?? 0) / REVIEWS_PER_PAGE));
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  const buildHref = (target: number) =>
+    target > 1
+      ? `/companies/${company.slug}?page=${target}`
+      : `/companies/${company.slug}`;
 
   let hasReviewed = false;
   if (user) {
@@ -51,8 +136,31 @@ export default async function CompanyPage({ params }: Props) {
     hasReviewed = existingReview !== null;
   }
 
+  const orgSchema = organizationSchema({
+    name: company.name,
+    slug: company.slug,
+    description: company.description,
+    domain: company.domain,
+    avgRating,
+    reviewCount,
+    reviews: reviews.slice(0, JSONLD_REVIEW_SAMPLE).map((r) => ({
+      author: r.profiles?.display_name ?? "Anonymous",
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      datePublished: r.created_at,
+    })),
+  });
+
+  const breadcrumbs = breadcrumbList([
+    { name: "Home", path: "/" },
+    { name: "Companies", path: "/companies" },
+    { name: company.name, path: `/companies/${company.slug}` },
+  ]);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
+      <JsonLd schema={[orgSchema, breadcrumbs]} />
       {/* Company header */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
         <div className="flex items-start gap-4">
@@ -133,9 +241,44 @@ export default async function CompanyPage({ params }: Props) {
               No reviews yet — be the first!
             </div>
           ) : (
-            reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))
+            <>
+              {reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+
+              {(hasPrev || hasNext) && (
+                <nav
+                  className="pt-4 flex items-center justify-between"
+                  aria-label="Reviews pagination"
+                >
+                  {hasPrev ? (
+                    <Link
+                      href={buildHref(page - 1)}
+                      rel="prev"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50"
+                    >
+                      ← Newer
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="text-sm text-gray-500">
+                    Page {page} of {totalPages}
+                  </span>
+                  {hasNext ? (
+                    <Link
+                      href={buildHref(page + 1)}
+                      rel="next"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50"
+                    >
+                      Older →
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </nav>
+              )}
+            </>
           )}
         </div>
       </div>
