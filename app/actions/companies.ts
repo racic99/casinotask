@@ -37,25 +37,62 @@ export async function addCompany(prevState: ActionState, formData: FormData): Pr
     return { fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
   }
 
-  const slug = slugify(parsed.data.name);
+  const baseSlug = slugify(parsed.data.name) || "company";
 
-  const { data, error } = await supabase
-    .from("companies")
-    .insert({
-      slug,
-      name: parsed.data.name,
-      domain: parsed.data.domain || null,
-      description: parsed.data.description || null,
-      category: parsed.data.category || null,
-      created_by: user.id,
-    })
-    .select("slug")
-    .single();
+  const companyData = {
+    name: parsed.data.name,
+    domain: parsed.data.domain || null,
+    description: parsed.data.description || null,
+    category: parsed.data.category || null,
+    created_by: user.id,
+  };
 
-  if (error) {
-    if (error.code === "23505") return { error: "A company with this name already exists." };
-    return { error: error.message };
+  // Different names can slugify to the same base (e.g. "Acme!" and "Acme?").
+  // Try the base slug first, then disambiguate with -2, -3, … on collision.
+  // A collision against a company with the *same name* is treated as a genuine
+  // duplicate and surfaced as a friendly error instead.
+  const MAX_ATTEMPTS = 10;
+  let createdSlug: string | null = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`;
+
+    const { data, error } = await supabase
+      .from("companies")
+      .insert({ slug, ...companyData })
+      .select("slug")
+      .single();
+
+    if (!error) {
+      createdSlug = data.slug;
+      break;
+    }
+
+    if (error.code !== "23505") {
+      return { error: error.message };
+    }
+
+    const { data: conflict } = await supabase
+      .from("companies")
+      .select("name")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (
+      conflict &&
+      conflict.name.trim().toLowerCase() === parsed.data.name.toLowerCase()
+    ) {
+      return { error: "A company with this name already exists." };
+    }
+    // Otherwise a different company owns this slug — try the next suffix.
   }
 
-  redirect(`/companies/${data.slug}`);
+  if (!createdSlug) {
+    return {
+      error:
+        "Could not generate a unique URL for this company. Please try a different name.",
+    };
+  }
+
+  redirect(`/companies/${createdSlug}`);
 }

@@ -1,15 +1,30 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
+import type { CompanyCardItem } from "@/types/database";
+
+const COMPANY_SELECT =
+  "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
 
 export default async function Home() {
   const supabase = await createClient();
 
   const { data: rows } = await supabase
     .from("companies")
-    .select("id")
+    .select(COMPANY_SELECT)
     .order("created_at", { ascending: false })
     .limit(6);
+
+  const companies: CompanyCardItem[] = (rows ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    domain: row.domain,
+    category: row.category,
+    description: row.description,
+    avg_rating: row.company_ratings?.[0]?.avg_rating ?? null,
+    review_count: row.company_ratings?.[0]?.review_count ?? 0,
+  }));
 
   return (
     <div>
@@ -56,8 +71,8 @@ export default async function Home() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rows!.map((row) => (
-              <CompanyCard key={row.id} companyId={row.id} />
+            {companies.map((company) => (
+              <CompanyCard key={company.id} company={company} />
             ))}
           </div>
         )}

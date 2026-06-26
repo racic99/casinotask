@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
-import type { CompanyWithRating } from "@/types/database";
+import type { CompanyCardItem } from "@/types/database";
+
+const COMPANY_SELECT =
+  "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
 
 type Props = { searchParams: Promise<{ q?: string }> };
 
@@ -9,33 +12,24 @@ export default async function CompaniesPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const supabase = await createClient();
 
-  let idQuery = supabase.from("companies").select("id").order("name");
+  let query = supabase.from("companies").select(COMPANY_SELECT).order("name");
 
   if (q) {
-    idQuery = idQuery.ilike("name", `%${q}%`);
+    query = query.ilike("name", `%${q}%`);
   }
 
-  const { data: rows } = await idQuery.limit(50);
+  const { data: rows } = await query.limit(50);
 
-  const companiesWithRatings: CompanyWithRating[] = (
-    await Promise.all(
-      (rows ?? []).map(async ({ id }) => {
-        const { data: company } = await supabase
-          .from("companies")
-          .select("*, company_ratings (avg_rating, review_count)")
-          .eq("id", id)
-          .single();
-
-        if (!company) return null;
-
-        return {
-          ...company,
-          avg_rating: company.company_ratings?.[0]?.avg_rating ?? null,
-          review_count: company.company_ratings?.[0]?.review_count ?? 0,
-        };
-      })
-    )
-  ).filter((company): company is CompanyWithRating => company !== null);
+  const companiesWithRatings: CompanyCardItem[] = (rows ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    domain: row.domain,
+    category: row.category,
+    description: row.description,
+    avg_rating: row.company_ratings?.[0]?.avg_rating ?? null,
+    review_count: row.company_ratings?.[0]?.review_count ?? 0,
+  }));
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">

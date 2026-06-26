@@ -4,6 +4,7 @@ import StarRating from "@/components/StarRating";
 import ReviewCard from "@/components/ReviewCard";
 import ReviewForm from "@/components/ReviewForm";
 import Link from "next/link";
+import type { Review } from "@/types/database";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -14,7 +15,9 @@ export default async function CompanyPage({ params }: Props) {
   const [{ data: company }, { data: { user } }] = await Promise.all([
     supabase
       .from("companies")
-      .select("*, company_ratings (avg_rating, review_count)")
+      .select(
+        "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)"
+      )
       .eq("slug", slug)
       .single(),
     supabase.auth.getUser(),
@@ -22,19 +25,31 @@ export default async function CompanyPage({ params }: Props) {
 
   if (!company) notFound();
 
-  const { data: reviews } = await supabase
+  const { data: reviewRows } = await supabase
     .from("reviews")
-    .select("*, profiles (display_name)")
+    .select("id, company_id, user_id, rating, title, body, created_at, profiles (display_name)")
     .eq("company_id", company.id)
     .order("created_at", { ascending: false })
     .limit(50);
+
+  // The to-one `profiles` embed is a single object at runtime; the untyped
+  // client widens it to an array, so normalize to the Review shape here.
+  const reviews = (reviewRows ?? []) as unknown as Review[];
 
   const rating = company.company_ratings?.[0];
   const avgRating = rating?.avg_rating ?? 0;
   const reviewCount = rating?.review_count ?? 0;
 
-  const hasReviewed =
-    user && reviews?.some((r) => r.user_id === user.id);
+  let hasReviewed = false;
+  if (user) {
+    const { data: existingReview } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("company_id", company.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    hasReviewed = existingReview !== null;
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -113,12 +128,12 @@ export default async function CompanyPage({ params }: Props) {
 
         {/* Reviews list */}
         <div className="lg:col-span-2 space-y-3">
-          {(reviews ?? []).length === 0 ? (
+          {reviews.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
               No reviews yet — be the first!
             </div>
           ) : (
-            reviews!.map((review) => (
+            reviews.map((review) => (
               <ReviewCard key={review.id} review={review} />
             ))
           )}

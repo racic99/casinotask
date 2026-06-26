@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
 import StarRating from "./StarRating";
-import type { CompanyWithRating } from "@/types/database";
+import type { CompanyCardItem } from "@/types/database";
 
-function CompanyCardContent({ company }: { company: CompanyWithRating }) {
+export default function CompanyCard({ company }: { company: CompanyCardItem }) {
   const rating = company.avg_rating ?? 0;
 
   return (
@@ -43,31 +42,4 @@ function CompanyCardContent({ company }: { company: CompanyWithRating }) {
       )}
     </Link>
   );
-}
-
-type CompanyCardProps =
-  | { company: CompanyWithRating; companyId?: never }
-  | { companyId: string; company?: never };
-
-export default async function CompanyCard(props: CompanyCardProps) {
-  if (props.company) {
-    return <CompanyCardContent company={props.company} />;
-  }
-
-  const supabase = await createClient();
-  const { data: row } = await supabase
-    .from("companies")
-    .select("*, company_ratings (avg_rating, review_count)")
-    .eq("id", props.companyId)
-    .single();
-
-  if (!row) return null;
-
-  const company: CompanyWithRating = {
-    ...row,
-    avg_rating: row.company_ratings?.[0]?.avg_rating ?? null,
-    review_count: row.company_ratings?.[0]?.review_count ?? 0,
-  };
-
-  return <CompanyCardContent company={company} />;
 }

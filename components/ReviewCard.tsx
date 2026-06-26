@@ -15,7 +15,9 @@ export default function ReviewCard({ review }: { review: Review }) {
           <StarRating rating={review.rating} size="sm" />
           <h4 className="mt-2 font-semibold text-gray-900">{review.title}</h4>
         </div>
-        <time className="text-sm text-gray-400 shrink-0">{date}</time>
+        <time dateTime={review.created_at} className="text-sm text-gray-400 shrink-0">
+          {date}
+        </time>
       </div>
       <p className="mt-2 text-gray-600 text-sm leading-relaxed">{review.body}</p>
       {review.profiles?.display_name && (

@@ -38,3 +38,15 @@ export type CompanyWithRating = Company & {
   avg_rating: number | null;
   review_count: number;
 };
+
+// Lean shape for company list/card rendering — only the columns the card needs.
+export type CompanyCardItem = {
+  id: string;
+  slug: string;
+  name: string;
+  domain: string | null;
+  category: string | null;
+  description: string | null;
+  avg_rating: number | null;
+  review_count: number;
+};
