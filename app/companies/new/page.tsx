@@ -36,10 +36,12 @@ export default function NewCompanyPage() {
             type="text"
             required
             placeholder="e.g. Acme Corp"
+            aria-invalid={state?.fieldErrors?.name ? true : undefined}
+            aria-describedby={state?.fieldErrors?.name ? "name-error" : undefined}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
           {state?.fieldErrors?.name && (
-            <p className="text-sm text-red-600 mt-1">{state.fieldErrors.name[0]}</p>
+            <p id="name-error" role="alert" className="text-sm text-red-700 mt-1">{state.fieldErrors.name[0]}</p>
           )}
         </div>
 
@@ -52,10 +54,12 @@ export default function NewCompanyPage() {
             name="domain"
             type="text"
             placeholder="e.g. acme.com"
+            aria-invalid={state?.fieldErrors?.domain ? true : undefined}
+            aria-describedby={state?.fieldErrors?.domain ? "domain-error" : undefined}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
           {state?.fieldErrors?.domain && (
-            <p className="text-sm text-red-600 mt-1">{state.fieldErrors.domain[0]}</p>
+            <p id="domain-error" role="alert" className="text-sm text-red-700 mt-1">{state.fieldErrors.domain[0]}</p>
           )}
         </div>
 
@@ -89,7 +93,7 @@ export default function NewCompanyPage() {
         </div>
 
         {state?.error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
+          <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
         )}
 
         <button

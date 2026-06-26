@@ -1,9 +1,10 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { getClientIpHash } from "@/lib/ip";
+import { TAG_COMPANIES, companyTag, companyReviewsTag } from "@/lib/queries";
 
 const reviewSchema = z.object({
   companyId: z.string().uuid({ error: "Invalid company." }),
@@ -71,6 +72,12 @@ export async function postReview(prevState: ActionState, formData: FormData): Pr
     return { error: error.message };
   }
 
+  // A new review changes this company's reviews, its rating aggregate, and the
+  // ranking used by the home/listing pages — invalidate all three. revalidatePath
+  // forces the poster's own view of the company page to refresh immediately.
+  revalidateTag(companyReviewsTag(parsed.data.companyId), "max");
+  revalidateTag(companyTag(parsed.data.companySlug), "max");
+  revalidateTag(TAG_COMPANIES, "max");
   revalidatePath(`/companies/${parsed.data.companySlug}`);
   return undefined;
 }

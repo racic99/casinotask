@@ -36,7 +36,7 @@ export default function SignupPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <form action={formAction} className="space-y-4">
             {state?.error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
+              <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
             )}
 
             <div>
@@ -50,10 +50,12 @@ export default function SignupPage() {
                 required
                 autoComplete="name"
                 placeholder="Jane Smith"
+                aria-invalid={state?.fieldErrors?.displayName ? true : undefined}
+                aria-describedby={state?.fieldErrors?.displayName ? "signup-name-error" : undefined}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.displayName && (
-                <p className="text-sm text-red-600 mt-1">{state.fieldErrors.displayName[0]}</p>
+                <p id="signup-name-error" role="alert" className="text-sm text-red-700 mt-1">{state.fieldErrors.displayName[0]}</p>
               )}
             </div>
 
@@ -67,10 +69,12 @@ export default function SignupPage() {
                 type="email"
                 required
                 autoComplete="email"
+                aria-invalid={state?.fieldErrors?.email ? true : undefined}
+                aria-describedby={state?.fieldErrors?.email ? "signup-email-error" : undefined}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.email && (
-                <p className="text-sm text-red-600 mt-1">{state.fieldErrors.email[0]}</p>
+                <p id="signup-email-error" role="alert" className="text-sm text-red-700 mt-1">{state.fieldErrors.email[0]}</p>
               )}
             </div>
 
@@ -85,10 +89,12 @@ export default function SignupPage() {
                 required
                 autoComplete="new-password"
                 placeholder="At least 8 characters"
+                aria-invalid={state?.fieldErrors?.password ? true : undefined}
+                aria-describedby={state?.fieldErrors?.password ? "signup-password-error" : undefined}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.password && (
-                <p className="text-sm text-red-600 mt-1">{state.fieldErrors.password[0]}</p>
+                <p id="signup-password-error" role="alert" className="text-sm text-red-700 mt-1">{state.fieldErrors.password[0]}</p>
               )}
             </div>
 
@@ -100,7 +106,7 @@ export default function SignupPage() {
               {isPending ? "Creating account…" : "Create account"}
             </button>
 
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-gray-600">
               Already have an account?{" "}
               <Link href="/auth/login" className="text-green-600 hover:underline font-medium">
                 Sign in

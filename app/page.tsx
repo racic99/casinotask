@@ -1,32 +1,26 @@
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
 import type { CompanyCardItem } from "@/types/database";
 import { JsonLd, webSiteSearch, breadcrumbList } from "@/lib/jsonld";
-
-const COMPANY_SELECT =
-  "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
+import { getRankedCompanies } from "@/lib/queries";
 
 export default async function Home() {
-  const supabase = await createClient();
+  // Cached, cookie-less read ranked by Bayesian score (review credibility).
+  const { rows } = await getRankedCompanies(undefined, 0, 5);
 
-  // Rank by the Bayesian score (review credibility), not the raw average.
-  const { data: rows } = await supabase
-    .from("companies")
-    .select(COMPANY_SELECT)
-    .order("bayesian_rating", { ascending: false })
-    .limit(6);
-
-  const companies: CompanyCardItem[] = (rows ?? []).map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    domain: row.domain,
-    category: row.category,
-    description: row.description,
-    avg_rating: row.company_ratings?.[0]?.avg_rating ?? null,
-    review_count: row.company_ratings?.[0]?.review_count ?? 0,
-  }));
+  const companies: CompanyCardItem[] = rows.map((row) => {
+    const rating = (row.company_ratings as { avg_rating: number | null; review_count: number }[] | null)?.[0];
+    return {
+      id: row.id as string,
+      slug: row.slug as string,
+      name: row.name as string,
+      domain: row.domain as string | null,
+      category: row.category as string | null,
+      description: row.description as string | null,
+      avg_rating: rating?.avg_rating ?? null,
+      review_count: rating?.review_count ?? 0,
+    };
+  });
 
   return (
     <div>

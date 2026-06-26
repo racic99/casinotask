@@ -35,9 +35,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geist.className} h-full`}>
       <body className="min-h-full flex flex-col bg-gray-50">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-green-700 focus:shadow focus:outline-none focus:ring-2 focus:ring-green-600"
+        >
+          Skip to content
+        </a>
         <Navbar />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-gray-100 bg-white py-6 text-center text-sm text-gray-400">
+        <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
+          {children}
+        </main>
+        <footer className="border-t border-gray-100 bg-white py-6 text-center text-sm text-gray-500">
           © {new Date().getFullYear()} ReviewHub
         </footer>
       </body>

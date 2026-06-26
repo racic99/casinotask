@@ -1,3 +1,5 @@
+import { env } from "./env";
+
 /**
  * Canonical site URL used for metadata, canonicals, sitemap, robots, and JSON-LD.
  *
@@ -5,7 +7,7 @@
  * back to localhost for local development.
  */
 export function getSiteUrl(): string {
-  const url = process.env.NEXT_PUBLIC_SITE_URL;
+  const url = env.NEXT_PUBLIC_SITE_URL;
   if (url) return url.replace(/\/$/, "");
 
   return "http://localhost:3000";

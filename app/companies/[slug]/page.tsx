@@ -8,6 +8,7 @@ import ReviewForm from "@/components/ReviewForm";
 import Link from "next/link";
 import type { Review } from "@/types/database";
 import { JsonLd, organizationSchema, breadcrumbList } from "@/lib/jsonld";
+import { getCompanyBySlug, getCompanyReviews } from "@/lib/queries";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -23,18 +24,9 @@ function parsePage(value: string | undefined): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
-// Deduped per request so generateMetadata and the page share one query.
-const getCompany = cache(async (slug: string) => {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("companies")
-    .select(
-      "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)"
-    )
-    .eq("slug", slug)
-    .single();
-  return data;
-});
+// React cache() dedupes the (already cached) profile read within a single
+// request so generateMetadata and the page don't both pay for it.
+const getCompany = cache((slug: string) => getCompanyBySlug(slug));
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -98,19 +90,14 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const from = (page - 1) * REVIEWS_PER_PAGE;
   const to = from + REVIEWS_PER_PAGE - 1;
 
-  const { data: reviewRows, count: reviewTotal } = await supabase
-    .from("reviews")
-    .select(
-      "id, company_id, user_id, rating, title, body, created_at, profiles (display_name)",
-      { count: "exact" }
-    )
-    .eq("company_id", company.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  // The to-one `profiles` embed is a single object at runtime; the untyped
-  // client widens it to an array, so normalize to the Review shape here.
-  const reviews = (reviewRows ?? []) as unknown as Review[];
+  // Cached public reviews (cookie-less). The to-one `profiles` embed is a single
+  // object at runtime; the untyped client widens it to an array, so normalize.
+  const { rows: reviewRows, count: reviewTotal } = await getCompanyReviews(
+    company.id,
+    from,
+    to
+  );
+  const reviews = reviewRows as unknown as Review[];
 
   const rating = company.company_ratings?.[0];
   const avgRating = rating?.avg_rating ?? 0;

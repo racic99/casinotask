@@ -2,7 +2,9 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
+import { TAG_COMPANIES } from "@/lib/queries";
 
 // Accepts a bare hostname or a full URL, normalizes to the lowercase hostname
 // (strips scheme, path, and any leading "www."), and validates it looks like a
@@ -112,6 +114,11 @@ export async function addCompany(prevState: ActionState, formData: FormData): Pr
         "Could not generate a unique URL for this company. Please try a different name.",
     };
   }
+
+  // A new company appears in the home + listing rankings.
+  revalidateTag(TAG_COMPANIES, "max");
+  revalidatePath("/");
+  revalidatePath("/companies");
 
   redirect(`/companies/${createdSlug}`);
 }

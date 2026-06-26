@@ -15,7 +15,7 @@ export default function ResetPasswordPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <form action={formAction} className="space-y-4">
             {state?.error && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              <p role="alert" className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2">
                 {state.error}
               </p>
             )}
@@ -34,10 +34,12 @@ export default function ResetPasswordPage() {
                 required
                 autoComplete="new-password"
                 placeholder="At least 8 characters"
+                aria-invalid={state?.fieldErrors?.password ? true : undefined}
+                aria-describedby={state?.fieldErrors?.password ? "reset-password-error" : undefined}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {state?.fieldErrors?.password && (
-                <p className="text-sm text-red-600 mt-1">
+                <p id="reset-password-error" role="alert" className="text-sm text-red-700 mt-1">
                   {state.fieldErrors.password[0]}
                 </p>
               )}

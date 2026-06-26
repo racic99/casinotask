@@ -1,12 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
 import CompanyCard from "@/components/CompanyCard";
 import type { CompanyCardItem } from "@/types/database";
 import { JsonLd, breadcrumbList } from "@/lib/jsonld";
-
-const COMPANY_SELECT =
-  "id, slug, name, domain, category, description, company_ratings (avg_rating, review_count)";
+import { getRankedCompanies } from "@/lib/queries";
 
 const PAGE_SIZE = 24;
 
@@ -44,35 +41,28 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function CompaniesPage({ searchParams }: Props) {
   const { q, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
-  const supabase = await createClient();
 
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  // Rank by Bayesian score; display the raw average + count on each card.
-  let query = supabase
-    .from("companies")
-    .select(COMPANY_SELECT, { count: "exact" })
-    .order("bayesian_rating", { ascending: false });
+  // Cached, cookie-less read ranked by Bayesian score; cards show raw avg + count.
+  const { rows, count } = await getRankedCompanies(q, from, to);
 
-  if (q) {
-    query = query.ilike("name", `%${q}%`);
-  }
+  const companiesWithRatings: CompanyCardItem[] = rows.map((row) => {
+    const rating = (row.company_ratings as { avg_rating: number | null; review_count: number }[] | null)?.[0];
+    return {
+      id: row.id as string,
+      slug: row.slug as string,
+      name: row.name as string,
+      domain: row.domain as string | null,
+      category: row.category as string | null,
+      description: row.description as string | null,
+      avg_rating: rating?.avg_rating ?? null,
+      review_count: rating?.review_count ?? 0,
+    };
+  });
 
-  const { data: rows, count } = await query.range(from, to);
-
-  const companiesWithRatings: CompanyCardItem[] = (rows ?? []).map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    domain: row.domain,
-    category: row.category,
-    description: row.description,
-    avg_rating: row.company_ratings?.[0]?.avg_rating ?? null,
-    review_count: row.company_ratings?.[0]?.review_count ?? 0,
-  }));
-
-  const totalCount = count ?? 0;
+  const totalCount = count;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const hasPrev = page > 1;
   const hasNext = page < totalPages;

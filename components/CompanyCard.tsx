@@ -17,7 +17,7 @@ export default function CompanyCard({ company }: { company: CompanyCardItem }) {
         <div className="min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{company.name}</h3>
           {company.domain && (
-            <p className="text-sm text-gray-400 truncate">{company.domain}</p>
+            <p className="text-sm text-gray-500 truncate">{company.domain}</p>
           )}
           {company.category && (
             <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
@@ -32,13 +32,13 @@ export default function CompanyCard({ company }: { company: CompanyCardItem }) {
           {rating > 0 ? rating.toFixed(1) : "No reviews"}
         </span>
         {company.review_count > 0 && (
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-gray-500">
             · {company.review_count} review{company.review_count !== 1 ? "s" : ""}
           </span>
         )}
       </div>
       {company.description && (
-        <p className="mt-2 text-sm text-gray-500 line-clamp-2">{company.description}</p>
+        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{company.description}</p>
       )}
     </Link>
   );

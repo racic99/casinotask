@@ -13,7 +13,7 @@ const sizes = { sm: "w-4 h-4", md: "w-5 h-5", lg: "w-7 h-7" };
 export default function StarRating({ rating, max = 5, size = "md" }: Props) {
   const gradientId = useId();
   return (
-    <div className="flex gap-0.5" aria-label={`${rating} out of ${max} stars`}>
+    <div className="flex gap-0.5" role="img" aria-label={`${rating} out of ${max} stars`}>
       {Array.from({ length: max }, (_, i) => {
         const filled = i < Math.floor(rating);
         const partial = !filled && i < rating;
@@ -21,6 +21,8 @@ export default function StarRating({ rating, max = 5, size = "md" }: Props) {
         return (
           <svg
             key={i}
+            aria-hidden="true"
+            focusable="false"
             className={`${sizes[size]} ${filled || partial ? "text-green-500" : "text-gray-200"}`}
             fill={filled ? "currentColor" : partial ? `url(#${starGradientId})` : "currentColor"}
             viewBox="0 0 20 20"
